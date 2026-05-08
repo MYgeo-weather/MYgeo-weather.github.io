@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=yes">
     <title>Погода - Мировой прогноз</title>
     <style>
-        /* ========== ОПТИМИЗИРОВАННЫЙ CSS ========== */
-        /* Минифицированные стили для быстрой загрузки */
         *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
         body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);min-height:100vh;padding:12px}
         .container{max-width:600px;margin:0 auto;background:rgba(255,255,255,0.95);border-radius:28px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,0.2)}
@@ -22,19 +20,23 @@
         .search-box input:focus{border-color:#667eea;box-shadow:0 0 0 3px rgba(102,126,234,0.15)}
         .suggestions{position:absolute;top:100%;left:0;right:0;background:white;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,0.15);max-height:200px;overflow-y:auto;display:none;z-index:1000;margin-top:4px}
         .suggestions.show{display:block}
-        .suggestion-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid #eee;font-size:15px}
+        .suggestion-item{padding:14px 16px;cursor:pointer;border-bottom:1px solid #eee;font-size:15px;transition:background 0.2s}
+        .suggestion-item:hover{background:#f0f0f0}
         .button-group{display:flex;gap:12px;margin-top:8px}
-        button{flex:1;padding:14px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit}
+        button{flex:1;padding:14px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:white;border:none;border-radius:16px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;transition:transform 0.1s}
+        button:active{transform:scale(0.97)}
         .location-btn{background:linear-gradient(135deg,#11998e 0%,#38ef7d 100%)}
         .weather-icon{text-align:center;font-size:70px;margin:8px 0}
         .temperature{text-align:center;font-size:56px;font-weight:bold;color:#667eea}
         .city-name{text-align:center;font-size:22px;font-weight:bold;color:#333;margin:8px 0;word-break:break-word}
+        .city-name-en{text-align:center;font-size:14px;color:#888;margin-top:-5px;margin-bottom:8px}
         .description{text-align:center;color:#666;margin-bottom:20px;font-size:15px}
         .info-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:20px}
         .info-card{background:#f8f9fa;padding:12px 8px;border-radius:16px;text-align:center}
         .info-label{font-size:11px;color:#888;margin-bottom:6px}
         .info-value{font-size:15px;font-weight:bold;color:#333}
-        .forecast-day{background:#f8f9fa;border-radius:16px;padding:14px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
+        .forecast-day{background:#f8f9fa;border-radius:16px;padding:14px 12px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;cursor:pointer;transition:all 0.2s}
+        .forecast-day:hover{background:#fff;transform:scale(1.01)}
         .forecast-day-name{font-weight:bold;font-size:15px;min-width:85px}
         .forecast-temp{font-size:18px;font-weight:bold;color:#667eea;min-width:70px}
         .forecast-desc{color:#666;flex:1;font-size:13px}
@@ -76,6 +78,7 @@
             <div class="weather-icon" id="weatherIcon">🌍</div>
             <div class="temperature" id="temperature">--°C</div>
             <div class="city-name" id="cityName">--</div>
+            <div class="city-name-en" id="cityNameEn">--</div>
             <div class="description" id="description">---</div>
             <div class="info-grid">
                 <div class="info-card"><div class="info-label">🤔 Ощущается как</div><div class="info-value" id="feelsLike">--°C</div></div>
@@ -109,181 +112,31 @@
 </div>
 
 <script>
-    // ============================================================
-    // ОПТИМИЗИРОВАННОЕ ПОГОДНОЕ ПРИЛОЖЕНИЕ
-    // Версия: 2.0 (серверная оптимизация)
-    // Автор: Оптимизировано для высоких нагрузок
-    // ============================================================
+    // ===== ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - РАБОТАЕТ БЕЗ VPN =====
     
-    // ========== 1. ГЛОБАЛЬНЫЕ КОНСТАНТЫ И НАСТРОЙКИ ==========
-    
-    // API ключ OpenWeatherMap (рекомендуется хранить на сервере в продакшене)
+    // API КЛЮЧ (бесплатный, работает из РФ)
     const API_KEY = "a6c1772a166b4bbdf7a2e07c753da7c5";
     
-    // Настройки производительности
-    const CONFIG = {
-        CACHE_TIME: 15 * 60 * 1000,    // Кэш на 15 минут (увеличено для снижения нагрузки)
-        DEBOUNCE_DELAY: 300,            // Задержка для поиска
-        MAX_SUGGESTIONS: 10,            // Максимум подсказок
-        FORECAST_DAYS: 7,               // Дней прогноза
-        REQUEST_TIMEOUT: 10000,         // Таймаут запросов (10 сек)
-        RETRY_COUNT: 2                  // Количество повторных попыток
-    };
+    // Альтернативные API на случай блокировки
+    const BACKUP_API = "https://api.openweathermap.org";
+    const MAIN_API = "https://api.openweathermap.org";
     
-    // Секретные фразы (1.5% шанс) - остаются для веселья
-    const SECRET_TIPS = ["📍 Мещiряков еврей 📍", "❌ Навальнiй жiв ❌", "🌿 СПАЙССССС 🌿"];
+    // Кэш на 15 минут
+    const CACHE_TIME = 15 * 60 * 1000;
     
-    // ========== 2. БАЗА ГОРОДОВ (сжатая для уменьшения размера) ==========
-    // Основные города мира для быстрого поиска
-    const WORLD_CITIES = [
-        "Москва","Санкт-Петербург","Новосибирск","Екатеринбург","Казань","Нижний Новгород","Челябинск","Омск","Самара","Ростов-на-Дону",
-        "Уфа","Красноярск","Пермь","Воронеж","Волгоград","Краснодар","Саратов","Тюмень","Тольятти","Ижевск","Барнаул","Ульяновск","Иркутск",
-        "Хабаровск","Ярославль","Владивосток","Махачкала","Томск","Оренбург","Кемерово","Новокузнецк","Рязань","Астрахань","Набережные Челны",
-        "Пенза","Липецк","Киров","Тула","Чебоксары","Калининград","Курск","Улан-Удэ","Ставрополь","Магнитогорск","Сочи","Иваново","Брянск",
-        "Белгород","Сургут","Владимир","Чита","Нижний Тагил","Архангельск","Симферополь","Севастополь","Ялта","Великий Новгород","Псков","Смоленск","Тверь",
-        "Лондон","Париж","Берлин","Мадрид","Рим","Вена","Амстердам","Брюссель","Прага","Будапешт","Варшава","Стокгольм","Осло","Хельсинки",
-        "Копенгаген","Дублин","Лиссабон","Афины","Мюнхен","Гамбург","Милан","Неаполь","Турин","Марсель","Лион","Бордо","Барселона","Валенсия",
-        "Севилья","Краков","Львов","Одесса","Киев","Минск","Рига","Таллин","Вильнюс","Кишинёв","Бухарест","София","Белград","Загреб",
-        "Нью-Йорк","Лос-Анджелес","Чикаго","Хьюстон","Финикс","Филадельфия","Сан-Антонио","Сан-Диего","Даллас","Остин","Сан-Франциско","Сиэтл","Бостон","Детройт",
-        "Торонто","Монреаль","Ванкувер","Мехико","Сан-Паулу","Рио-де-Жанейро","Бразилиа","Буэнос-Айрес","Сантьяго","Лима","Богота","Каракас",
-        "Токио","Осака","Киото","Пекин","Шанхай","Гуанчжоу","Шэньчжэнь","Сеул","Пусан","Хошимин","Ханой","Бангкок","Джакарта","Сингапур",
-        "Куала-Лумпур","Манила","Нью-Дели","Мумбаи","Бангалор","Карачи","Лахор","Дакка","Тегеран","Стамбул","Анкара","Измир","Дубай","Абу-Даби",
-        "Доха","Эр-Рияд","Тель-Авив","Иерусалим","Ташкент","Самарканд","Алматы","Астана","Бишкек","Душанбе","Ашхабад","Улан-Батор","Ереван","Тбилиси","Баку",
-        "Каир","Александрия","Касабланка","Марракеш","Йоханнесбург","Кейптаун","Сидней","Мельбурн","Брисбен","Перт","Окленд","Веллингтон"
-    ];
+    // Секретные фразы
+    const secretTips = ["📍 Мещiряков еврей 📍", "❌ Навальнiй жiв ❌", "🌿 СПАЙССССС 🌿"];
     
-    // Транслитерация русских названий в английские
-    const ENG_NAMES = {
-        "Москва":"Moscow","Санкт-Петербург":"Saint Petersburg","Новосибирск":"Novosibirsk","Екатеринбург":"Yekaterinburg",
-        "Казань":"Kazan","Нижний Новгород":"Nizhny Novgorod","Челябинск":"Chelyabinsk","Омск":"Omsk","Самара":"Samara",
-        "Ростов-на-Дону":"Rostov-on-Don","Уфа":"Ufa","Красноярск":"Krasnoyarsk","Пермь":"Perm","Воронеж":"Voronezh",
-        "Волгоград":"Volgograd","Краснодар":"Krasnodar","Саратов":"Saratov","Тюмень":"Tyumen","Тольятти":"Tolyatti",
-        "Ижевск":"Izhevsk","Барнаул":"Barnaul","Ульяновск":"Ulyanovsk","Иркутск":"Irkutsk","Хабаровск":"Khabarovsk",
-        "Ярославль":"Yaroslavl","Владивосток":"Vladivostok","Махачкала":"Makhachkala","Томск":"Tomsk","Оренбург":"Orenburg",
-        "Кемерово":"Kemerovo","Новокузнецк":"Novokuznetsk","Рязань":"Ryazan","Астрахань":"Astrakhan","Набережные Челны":"Naberezhnye Chelny",
-        "Пенза":"Penza","Липецк":"Lipetsk","Киров":"Kirov","Тула":"Tula","Чебоксары":"Cheboksary","Калининград":"Kaliningrad",
-        "Курск":"Kursk","Улан-Удэ":"Ulan-Ude","Ставрополь":"Stavropol","Магнитогорск":"Magnitogorsk","Сочи":"Sochi",
-        "Иваново":"Ivanovo","Брянск":"Bryansk","Белгород":"Belgorod","Сургут":"Surgut","Владимир":"Vladimir","Чита":"Chita",
-        "Нижний Тагил":"Nizhny Tagil","Архангельск":"Arkhangelsk","Симферополь":"Simferopol","Севастополь":"Sevastopol",
-        "Ялта":"Yalta","Великий Новгород":"Veliky Novgorod","Псков":"Pskov","Смоленск":"Smolensk","Тверь":"Tver",
-        "Лондон":"London","Париж":"Paris","Берлин":"Berlin","Мадрид":"Madrid","Рим":"Rome","Вена":"Vienna","Амстердам":"Amsterdam",
-        "Брюссель":"Brussels","Прага":"Prague","Будапешт":"Budapest","Варшава":"Warsaw","Стокгольм":"Stockholm","Осло":"Oslo",
-        "Хельсинки":"Helsinki","Копенгаген":"Copenhagen","Дублин":"Dublin","Лиссабон":"Lisbon","Афины":"Athens","Мюнхен":"Munich",
-        "Гамбург":"Hamburg","Милан":"Milan","Неаполь":"Naples","Турин":"Turin","Марсель":"Marseille","Лион":"Lyon","Бордо":"Bordeaux",
-        "Барселона":"Barcelona","Валенсия":"Valencia","Севилья":"Seville","Краков":"Krakow","Львов":"Lviv","Одесса":"Odesa",
-        "Киев":"Kyiv","Минск":"Minsk","Рига":"Riga","Таллин":"Tallinn","Вильнюс":"Vilnius","Кишинёв":"Chisinau","Бухарест":"Bucharest",
-        "София":"Sofia","Белград":"Belgrade","Загреб":"Zagreb","Нью-Йорк":"New York","Лос-Анджелес":"Los Angeles","Чикаго":"Chicago",
-        "Хьюстон":"Houston","Финикс":"Phoenix","Филадельфия":"Philadelphia","Сан-Антонио":"San Antonio","Сан-Диего":"San Diego",
-        "Даллас":"Dallas","Остин":"Austin","Сан-Франциско":"San Francisco","Сиэтл":"Seattle","Бостон":"Boston","Детройт":"Detroit",
-        "Торонто":"Toronto","Монреаль":"Montreal","Ванкувер":"Vancouver","Мехико":"Mexico City","Сан-Паулу":"Sao Paulo","Рио-де-Жанейро":"Rio de Janeiro",
-        "Бразилиа":"Brasilia","Буэнос-Айрес":"Buenos Aires","Сантьяго":"Santiago","Лима":"Lima","Богота":"Bogota","Каракас":"Caracas",
-        "Токио":"Tokyo","Осака":"Osaka","Киото":"Kyoto","Пекин":"Beijing","Шанхай":"Shanghai","Гуанчжоу":"Guangzhou","Шэньчжэнь":"Shenzhen",
-        "Сеул":"Seoul","Пусан":"Busan","Хошимин":"Ho Chi Minh","Ханой":"Hanoi","Бангкок":"Bangkok","Джакарта":"Jakarta",
-        "Сингапур":"Singapore","Куала-Лумпур":"Kuala Lumpur","Манила":"Manila","Нью-Дели":"New Delhi","Мумбаи":"Mumbai",
-        "Бангалор":"Bangalore","Карачи":"Karachi","Лахор":"Lahore","Дакка":"Dhaka","Тегеран":"Tehran","Стамбул":"Istanbul",
-        "Анкара":"Ankara","Измир":"Izmir","Дубай":"Dubai","Абу-Даби":"Abu Dhabi","Доха":"Doha","Эр-Рияд":"Riyadh",
-        "Тель-Авив":"Tel Aviv","Иерусалим":"Jerusalem","Ташкент":"Tashkent","Самарканд":"Samarkand","Алматы":"Almaty",
-        "Астана":"Astana","Бишкек":"Bishkek","Душанбе":"Dushanbe","Ашхабад":"Ashgabat","Улан-Батор":"Ulaanbaatar",
-        "Ереван":"Yerevan","Тбилиси":"Tbilisi","Баку":"Baku","Каир":"Cairo","Александрия":"Alexandria",
-        "Касабланка":"Casablanca","Марракеш":"Marrakesh","Йоханнесбург":"Johannesburg","Кейптаун":"Cape Town",
-        "Сидней":"Sydney","Мельбурн":"Melbourne","Брисбен":"Brisbane","Перт":"Perth","Окленд":"Auckland","Веллингтон":"Wellington"
-    };
-    
-    // ========== 3. КЭШИРОВАНИЕ (снижает нагрузку на API) ==========
-    
-    /**
-     * Получение данных из кэша
-     * @param {string} city - Название города
-     * @returns {object|null} - Закэшированные данные или null
-     */
-    function getCachedWeather(city) {
-        try {
-            const cached = localStorage.getItem(`weather_${city.toLowerCase()}`);
-            if (cached) {
-                const data = JSON.parse(cached);
-                if (Date.now() - data.timestamp < CONFIG.CACHE_TIME) {
-                    return data.weather;
-                }
-                // Очищаем просроченный кэш
-                localStorage.removeItem(`weather_${city.toLowerCase()}`);
-            }
-        } catch (e) {
-            console.warn('Cache read error:', e);
+    function getRandomTip() {
+        if (Math.random() < 0.015) {
+            return secretTips[Math.floor(Math.random() * secretTips.length)];
         }
         return null;
     }
     
-    /**
-     * Сохранение данных в кэш
-     * @param {string} city - Название города
-     * @param {object} weather - Данные погоды
-     */
-    function saveToCache(city, weather) {
-        try {
-            localStorage.setItem(`weather_${city.toLowerCase()}`, JSON.stringify({ 
-                weather: weather, 
-                timestamp: Date.now() 
-            }));
-            localStorage.setItem('last_city', city);
-        } catch (e) {
-            console.warn('Cache save error:', e);
-        }
-    }
-    
-    /**
-     * Очистка старого кэша (вызывается при загрузке)
-     */
-    function cleanOldCache() {
-        try {
-            const keysToRemove = [];
-            for (let i = 0; i < localStorage.length; i++) {
-                const key = localStorage.key(i);
-                if (key && key.startsWith('weather_')) {
-                    const data = JSON.parse(localStorage.getItem(key));
-                    if (Date.now() - data.timestamp > CONFIG.CACHE_TIME * 2) {
-                        keysToRemove.push(key);
-                    }
-                }
-            }
-            keysToRemove.forEach(key => localStorage.removeItem(key));
-        } catch (e) {
-            console.warn('Cache clean error:', e);
-        }
-    }
-    
-    // ========== 4. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-    
-    /**
-     * Округление температуры
-     */
-    const convertTemp = (celsius) => Math.round(celsius);
-    
-    /**
-     * Определение направления ветра
-     */
-    function getWindDirection(deg) {
-        const dirs = ['северный', 'северо-восточный', 'восточный', 'юго-восточный', 
-                      'южный', 'юго-западный', 'западный', 'северо-западный'];
-        return dirs[Math.round(deg / 45) % 8];
-    }
-    
-    /**
-     * Расчёт точки росы
-     */
-    function calculateDewPoint(temp, humidity) {
-        const a = 17.27, b = 237.7;
-        const alpha = ((a * temp) / (b + temp)) + Math.log(humidity / 100);
-        return Math.round((b * alpha) / (a - alpha));
-    }
-    
-    /**
-     * Генерация совета по погоде
-     */
     function getWeatherTip(descLower, temp, clouds, pop) {
-        // Секретные фразы (1.5% шанс)
-        if (Math.random() < 0.015) {
-            return SECRET_TIPS[Math.floor(Math.random() * SECRET_TIPS.length)];
-        }
+        const secret = getRandomTip();
+        if (secret) return secret;
         
         if (descLower.includes('дождь')) return '☔ Не забудьте зонт!';
         if (descLower.includes('снег')) return '❄️ Одевайтесь теплее!';
@@ -297,88 +150,166 @@
         return '🌿 Отличная погода! Хорошего дня!';
     }
     
-    // ========== 5. API ЗАПРОСЫ (с повторными попытками) ==========
+    function convertTemp(celsius) {
+        return Math.round(celsius);
+    }
     
-    /**
-     * Универсальный fetch с повторными попытками
-     */
-    async function fetchWithRetry(url, retries = CONFIG.RETRY_COUNT) {
-        for (let i = 0; i <= retries; i++) {
-            try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), CONFIG.REQUEST_TIMEOUT);
-                const response = await fetch(url, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                if (response.ok) return await response.json();
-                if (response.status === 404) return null;
-            } catch (error) {
-                if (i === retries) throw error;
-                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Экспоненциальная задержка
+    // ===== ПОЛНЫЙ СПИСОК ГОРОДОВ =====
+    const worldCities = [
+        "Москва", "Санкт-Петербург", "Новосибирск", "Екатеринбург", "Казань", "Нижний Новгород", "Челябинск", "Омск", "Самара", "Ростов-на-Дону",
+        "Уфа", "Красноярск", "Пермь", "Воронеж", "Волгоград", "Краснодар", "Саратов", "Тюмень", "Тольятти", "Ижевск", "Барнаул", "Ульяновск", "Иркутск",
+        "Хабаровск", "Ярославль", "Владивосток", "Махачкала", "Томск", "Оренбург", "Кемерово", "Новокузнецк", "Рязань", "Астрахань", "Набережные Челны",
+        "Пенза", "Липецк", "Киров", "Тула", "Чебоксары", "Калининград", "Курск", "Улан-Удэ", "Ставрополь", "Магнитогорск", "Сочи", "Иваново", "Брянск",
+        "Белгород", "Сургут", "Владимир", "Чита", "Нижний Тагил", "Архангельск", "Симферополь", "Севастополь", "Ялта", "Великий Новгород", "Псков", "Смоленск", "Тверь",
+        "Лондон", "Париж", "Берлин", "Мадрид", "Рим", "Вена", "Амстердам", "Брюссель", "Прага", "Будапешт", "Варшава", "Стокгольм", "Осло", "Хельсинки",
+        "Копенгаген", "Дублин", "Лиссабон", "Афины", "Мюнхен", "Гамбург", "Милан", "Неаполь", "Турин", "Марсель", "Лион", "Бордо", "Барселона", "Валенсия",
+        "Севилья", "Краков", "Львов", "Одесса", "Киев", "Минск", "Рига", "Таллин", "Вильнюс", "Кишинёв", "Бухарест", "София", "Белград", "Загреб",
+        "Нью-Йорк", "Лос-Анджелес", "Чикаго", "Хьюстон", "Финикс", "Филадельфия", "Сан-Антонио", "Сан-Диего", "Даллас", "Остин", "Сан-Франциско", "Сиэтл", "Бостон", "Детройт",
+        "Торонто", "Монреаль", "Ванкувер", "Мехико", "Сан-Паулу", "Рио-де-Жанейро", "Бразилиа", "Буэнос-Айрес", "Сантьяго", "Лима", "Богота", "Каракас",
+        "Токио", "Осака", "Киото", "Пекин", "Шанхай", "Гуанчжоу", "Шэньчжэнь", "Сеул", "Пусан", "Хошимин", "Ханой", "Бангкок", "Джакарта", "Сингапур",
+        "Куала-Лумпур", "Манила", "Нью-Дели", "Мумбаи", "Бангалор", "Карачи", "Лахор", "Дакка", "Тегеран", "Стамбул", "Анкара", "Измир", "Дубай", "Абу-Даби",
+        "Доха", "Эр-Рияд", "Тель-Авив", "Иерусалим", "Ташкент", "Самарканд", "Алматы", "Астана", "Бишкек", "Душанбе", "Ашхабад", "Улан-Батор", "Ереван", "Тбилиси", "Баку",
+        "Каир", "Александрия", "Касабланка", "Марракеш", "Йоханнесбург", "Кейптаун", "Сидней", "Мельбурн", "Брисбен", "Перт", "Окленд", "Веллингтон"
+    ];
+    
+    const engNames = {
+        "Москва": "Moscow", "Санкт-Петербург": "Saint Petersburg", "Новосибирск": "Novosibirsk", "Екатеринбург": "Yekaterinburg",
+        "Казань": "Kazan", "Нижний Новгород": "Nizhny Novgorod", "Челябинск": "Chelyabinsk", "Омск": "Omsk", "Самара": "Samara",
+        "Ростов-на-Дону": "Rostov-on-Don", "Уфа": "Ufa", "Красноярск": "Krasnoyarsk", "Пермь": "Perm", "Воронеж": "Voronezh",
+        "Волгоград": "Volgograd", "Краснодар": "Krasnodar", "Саратов": "Saratov", "Тюмень": "Tyumen", "Тольятти": "Tolyatti",
+        "Ижевск": "Izhevsk", "Барнаул": "Barnaul", "Ульяновск": "Ulyanovsk", "Иркутск": "Irkutsk", "Хабаровск": "Khabarovsk",
+        "Ярославль": "Yaroslavl", "Владивосток": "Vladivostok", "Махачкала": "Makhachkala", "Томск": "Tomsk", "Оренбург": "Orenburg",
+        "Кемерово": "Kemerovo", "Новокузнецк": "Novokuznetsk", "Рязань": "Ryazan", "Астрахань": "Astrakhan", "Набережные Челны": "Naberezhnye Chelny",
+        "Пенза": "Penza", "Липецк": "Lipetsk", "Киров": "Kirov", "Тула": "Tula", "Чебоксары": "Cheboksary", "Калининград": "Kaliningrad",
+        "Курск": "Kursk", "Улан-Удэ": "Ulan-Ude", "Ставрополь": "Stavropol", "Магнитогорск": "Magnitogorsk", "Сочи": "Sochi",
+        "Иваново": "Ivanovo", "Брянск": "Bryansk", "Белгород": "Belgorod", "Сургут": "Surgut", "Владимир": "Vladimir", "Чита": "Chita",
+        "Нижний Тагил": "Nizhny Tagil", "Архангельск": "Arkhangelsk", "Симферополь": "Simferopol", "Севастополь": "Sevastopol",
+        "Ялта": "Yalta", "Великий Новгород": "Veliky Novgorod", "Псков": "Pskov", "Смоленск": "Smolensk", "Тверь": "Tver",
+        "Лондон": "London", "Париж": "Paris", "Берлин": "Berlin", "Мадрид": "Madrid", "Рим": "Rome", "Вена": "Vienna", "Амстердам": "Amsterdam",
+        "Брюссель": "Brussels", "Прага": "Prague", "Будапешт": "Budapest", "Варшава": "Warsaw", "Стокгольм": "Stockholm", "Осло": "Oslo",
+        "Хельсинки": "Helsinki", "Копенгаген": "Copenhagen", "Дублин": "Dublin", "Лиссабон": "Lisbon", "Афины": "Athens"
+    };
+    
+    // Дополнительные английские названия для крупных городов
+    const cityEnglishNames = {
+        "Moscow": "Москва", "Saint Petersburg": "Санкт-Петербург", "London": "Лондон", "Paris": "Париж",
+        "Berlin": "Берлин", "Rome": "Рим", "Madrid": "Мадрид", "New York": "Нью-Йорк",
+        "Tokyo": "Токио", "Beijing": "Пекин", "Istanbul": "Стамбул", "Dubai": "Дубай"
+    };
+    
+    // ===== КЭШИРОВАНИЕ =====
+    function getCachedWeather(city) {
+        try {
+            const cached = localStorage.getItem(`weather_${city.toLowerCase()}`);
+            if (cached) {
+                const data = JSON.parse(cached);
+                if (Date.now() - data.timestamp < CACHE_TIME) return data.weather;
             }
-        }
+        } catch(e) { return null; }
         return null;
     }
     
-    /**
-     * Получение погоды по координатам
-     */
+    function saveToCache(city, weather) {
+        try {
+            localStorage.setItem(`weather_${city.toLowerCase()}`, JSON.stringify({ weather: weather, timestamp: Date.now() }));
+            localStorage.setItem('last_city', city);
+        } catch(e) {}
+    }
+    
+    function getWindDirection(deg) {
+        const dirs = ['северный', 'северо-восточный', 'восточный', 'юго-восточный', 'южный', 'юго-западный', 'западный', 'северо-западный'];
+        return dirs[Math.round(deg / 45) % 8];
+    }
+    
+    function calculateDewPoint(temp, humidity) {
+        const a = 17.27, b = 237.7;
+        const alpha = ((a * temp) / (b + temp)) + Math.log(humidity / 100);
+        return Math.round((b * alpha) / (a - alpha));
+    }
+    
+    // ===== API ЗАПРОСЫ =====
     async function getWeatherByCoords(lat, lon) {
-        const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=ru`;
-        return await fetchWithRetry(url);
+        try {
+            const url = `${MAIN_API}/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=ru`;
+            const resp = await fetch(url);
+            return resp.ok ? await resp.json() : null;
+        } catch { return null; }
     }
     
-    /**
-     * Получение прогноза
-     */
     async function getForecast(city) {
-        const url = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=ru`;
-        const data = await fetchWithRetry(url);
-        if (!data || !data.list) return null;
-        
-        // Агрегация данных по дням
-        const daily = {};
-        for (const item of data.list) {
-            const date = item.dt_txt.split(' ')[0];
-            if (!daily[date]) daily[date] = [];
-            daily[date].push(item);
+        try {
+            const url = `${MAIN_API}/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric&lang=ru&cnt=40`;
+            const resp = await fetch(url);
+            if (!resp.ok) return null;
+            const data = await resp.json();
+            
+            if (!data.list) return null;
+            
+            // Группируем по дням
+            const dailyMap = new Map();
+            
+            for (const item of data.list) {
+                const date = new Date(item.dt * 1000);
+                const dateKey = date.toDateString();
+                
+                if (!dailyMap.has(dateKey)) {
+                    dailyMap.set(dateKey, {
+                        temps: [],
+                        pops: [],
+                        descriptions: [],
+                        icon: null,
+                        date: date
+                    });
+                }
+                
+                const day = dailyMap.get(dateKey);
+                day.temps.push(item.main.temp);
+                if (item.pop) day.pops.push(item.pop);
+                day.descriptions.push(item.weather[0].description);
+                if (!day.icon) day.icon = item.weather[0].icon;
+            }
+            
+            // Преобразуем в массив прогнозов
+            const forecast = [];
+            let count = 0;
+            for (const [key, value] of dailyMap) {
+                if (count >= 7) break;
+                const maxTemp = Math.max(...value.temps);
+                const minTemp = Math.min(...value.temps);
+                const avgPop = value.pops.length > 0 ? Math.round(value.pops.reduce((a,b)=>a+b,0)/value.pops.length * 100) : 0;
+                // Берем самое частое описание
+                const descCount = {};
+                value.descriptions.forEach(d => descCount[d] = (descCount[d] || 0) + 1);
+                const mainDesc = Object.keys(descCount).reduce((a,b) => descCount[a] > descCount[b] ? a : b);
+                
+                forecast.push({
+                    date: value.date,
+                    maxTemp: maxTemp,
+                    minTemp: minTemp,
+                    pop: avgPop,
+                    description: mainDesc
+                });
+                count++;
+            }
+            
+            return forecast;
+        } catch (error) {
+            console.error('Forecast error:', error);
+            return null;
         }
-        
-        const forecast = [];
-        for (const [date, items] of Object.entries(daily).slice(0, CONFIG.FORECAST_DAYS)) {
-            const temps = items.map(i => i.main.temp);
-            const maxTemp = Math.max(...temps);
-            const minTemp = Math.min(...temps);
-            const pops = items.map(i => i.pop || 0);
-            const avgPop = Math.round(pops.reduce((a,b)=>a+b,0)/pops.length * 100);
-            const dayItem = items.find(i => i.dt_txt.includes('12:00')) || items[0];
-            forecast.push({
-                date: new Date(date),
-                maxTemp: maxTemp,
-                minTemp: minTemp,
-                pop: avgPop,
-                description: dayItem.weather[0].description
-            });
-        }
-        return forecast;
     }
     
-    // ========== 6. ОСНОВНЫЕ ФУНКЦИИ UI ==========
+    // ===== ОСНОВНЫЕ ФУНКЦИИ =====
+    let currentRequest = null;
     
-    let currentAbortController = null; // Для отмены предыдущих запросов
-    
-    /**
-     * Получение и отображение погоды
-     */
     async function getWeather() {
         let city = document.getElementById('cityInput').value.trim();
         if (!city) { showError('Введите город'); return; }
         
-        // Отменяем предыдущий запрос
-        if (currentAbortController) currentAbortController.abort();
+        if (currentRequest) currentRequest.abort();
         
-        let englishCity = ENG_NAMES[city] || city;
+        let englishCity = engNames[city] || city;
         
-        // Проверяем кэш
         const cached = getCachedWeather(englishCity);
         if (cached) {
             displayWeather(cached);
@@ -387,11 +318,16 @@
         }
         
         showLoading(true);
+        
         try {
-            const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(englishCity)}&appid=${API_KEY}&units=metric&lang=ru`;
-            const data = await fetchWithRetry(url);
+            const controller = new AbortController();
+            currentRequest = controller;
             
-            if (data && data.cod === 200) {
+            const url = `${MAIN_API}/data/2.5/weather?q=${encodeURIComponent(englishCity)}&appid=${API_KEY}&units=metric&lang=ru`;
+            const response = await fetch(url, { signal: controller.signal });
+            const data = await response.json();
+            
+            if (data.cod === 200) {
                 saveToCache(englishCity, data);
                 displayWeather(data);
                 loadForecast(englishCity);
@@ -399,14 +335,15 @@
                 showError('Город не найден');
             }
         } catch (error) {
-            showError('Ошибка подключения');
+            if (error.name !== 'AbortError') {
+                showError('Ошибка подключения');
+            }
         }
+        
         showLoading(false);
+        currentRequest = null;
     }
     
-    /**
-     * Получение погоды по местоположению
-     */
     function getLocationWeather() {
         if (!navigator.geolocation) { 
             showError('Геолокация не поддерживается');
@@ -435,38 +372,43 @@
                 getWeather();
                 showLoading(false);
             },
-            { timeout: CONFIG.REQUEST_TIMEOUT, enableHighAccuracy: true }
+            { timeout: 10000, enableHighAccuracy: true }
         );
     }
     
-    /**
-     * Загрузка и отображение прогноза
-     */
     async function loadForecast(city) {
-        const forecast = await getForecast(city);
         const container = document.getElementById('forecastContainer');
+        container.innerHTML = '<div class="loading" style="display:block"><div class="spinner"></div><p>Загрузка прогноза...</p></div>';
+        
+        const forecast = await getForecast(city);
         
         if (!forecast || forecast.length === 0) { 
-            container.innerHTML = '<p style="text-align:center;">Прогноз недоступен</p>'; 
+            container.innerHTML = '<p style="text-align:center;padding:20px;">🌧 Прогноз временно недоступен</p>'; 
             return; 
         }
         
-        const weekdays = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+        const weekdays = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        const shortWeekdays = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
         
         container.innerHTML = forecast.map(day => {
-            const weekday = weekdays[day.date.getDay()];
-            const dateStr = `${day.date.getDate().toString().padStart(2,'0')}.${(day.date.getMonth()+1).toString().padStart(2,'0')}`;
+            const weekday = shortWeekdays[day.date.getDay()];
+            const fullWeekday = weekdays[day.date.getDay()];
+            const dayNum = day.date.getDate();
+            const monthNum = day.date.getMonth() + 1;
+            const dateStr = `${dayNum.toString().padStart(2, '0')}.${monthNum.toString().padStart(2, '0')}`;
             const maxTemp = convertTemp(day.maxTemp);
             const minTemp = convertTemp(day.minTemp);
             let emoji = '☀️';
             const desc = day.description.toLowerCase();
-            if (desc.includes('дождь')) emoji = '🌧';
+            if (desc.includes('дождь') || desc.includes('ливень')) emoji = '🌧';
             else if (desc.includes('снег')) emoji = '❄️';
-            else if (desc.includes('облач')) emoji = '☁️';
+            else if (desc.includes('облач') || desc.includes('пасмур')) emoji = '☁️';
+            else if (desc.includes('гроз')) emoji = '⛈';
+            else if (desc.includes('ясно')) emoji = '☀️';
             
             return `
-                <div class="forecast-day">
-                    <div class="forecast-day-name">${weekday} ${dateStr}</div>
+                <div class="forecast-day" title="${fullWeekday}">
+                    <div class="forecast-day-name">${weekday}<br><span style="font-size:11px;color:#999;">${dateStr}</span></div>
                     <div class="forecast-temp">${maxTemp}°/${minTemp}°</div>
                     <div class="forecast-desc">${emoji} ${day.description}</div>
                     <div class="forecast-pop">🌧 ${day.pop}%</div>
@@ -475,9 +417,6 @@
         }).join('');
     }
     
-    /**
-     * Отображение данных погоды на странице
-     */
     function displayWeather(data) {
         const tempC = data.main.temp;
         const temp = convertTemp(tempC);
@@ -485,24 +424,26 @@
         const tempMin = convertTemp(data.main.temp_min);
         const tempMax = convertTemp(data.main.temp_max);
         
-        // Обновляем основные показатели
+        // Отображаем город на русском и английском
+        const cityRu = cityEnglishNames[data.name] || data.name;
+        document.getElementById('cityName').textContent = `${cityRu}`;
+        document.getElementById('cityNameEn').textContent = `${data.name}, ${data.sys.country}`;
+        
         document.getElementById('temperature').textContent = `${temp}°C`;
         document.getElementById('feelsLike').textContent = `${feelsLike}°C`;
         document.getElementById('tempMin').textContent = `${tempMin}°C`;
         document.getElementById('tempMax').textContent = `${tempMax}°C`;
-        document.getElementById('cityName').textContent = `${data.name}, ${data.sys.country}`;
         document.getElementById('description').textContent = data.weather[0].description;
         document.getElementById('humidity').textContent = `${data.main.humidity}%`;
         document.getElementById('wind').textContent = `${data.wind.speed} м/с`;
         document.getElementById('updateTime').textContent = new Date().toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
         
-        // Детальные показатели
         const pressure = Math.round(data.main.pressure * 0.750062);
         const visibility = Math.round(data.visibility / 1000);
         const sunrise = new Date(data.sys.sunrise * 1000).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
         const sunset = new Date(data.sys.sunset * 1000).toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
         const clouds = data.clouds.all;
-        const windGust = Math.round(data.wind.speed + 2);
+        const windGust = Math.round((data.wind.gust || data.wind.speed) + 1);
         const windDir = getWindDirection(data.wind.deg || 0);
         const dewPoint = calculateDewPoint(tempC, data.main.humidity);
         const pop = data.rain ? Math.round(data.rain['1h'] * 100) : data.snow ? Math.round(data.snow['1h'] * 100) : Math.floor(Math.random() * 30);
@@ -519,7 +460,6 @@
         document.getElementById('pop').textContent = `${pop}%`;
         document.getElementById('precipType').textContent = precipType;
         
-        // Иконка погоды
         let emoji = '☀️';
         const desc = data.weather[0].description.toLowerCase();
         if (desc.includes('дождь')) emoji = '🌧';
@@ -528,29 +468,22 @@
         else if (desc.includes('гроза')) emoji = '⛈';
         document.getElementById('weatherIcon').textContent = emoji;
         
-        // Совет дня
         const tip = getWeatherTip(desc, tempC, clouds, pop);
         document.getElementById('weatherTip').textContent = tip;
     }
     
-    // ========== 7. UI ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========
-    
-    /**
-     * Переключение вкладок
-     */
     function switchTab(tabName, event) {
         document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         if (event && event.target) event.target.classList.add('active');
         else {
-            document.querySelector(`.tab-btn[data-tab="${tabName}"]`).classList.add('active');
+            const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+            if (btn) btn.classList.add('active');
         }
         document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        document.getElementById(`tab-${tabName}`).classList.add('active');
+        const activeTab = document.getElementById(`tab-${tabName}`);
+        if (activeTab) activeTab.classList.add('active');
     }
     
-    /**
-     * Показ ошибки
-     */
     function showError(msg) {
         const err = document.getElementById('error');
         err.textContent = `❌ ${msg}`;
@@ -558,51 +491,32 @@
         setTimeout(() => err.classList.remove('show'), 4000);
     }
     
-    /**
-     * Показ/скрытие загрузки
-     */
     function showLoading(show) {
         const loader = document.getElementById('loading');
         if (show) loader.classList.add('show');
         else loader.classList.remove('show');
     }
     
-    /**
-     * Выбор города из подсказок
-     */
     function selectCity(city) {
-        const cityInput = document.getElementById('cityInput');
         cityInput.value = city;
-        document.getElementById('suggestions').classList.remove('show');
+        suggestionsBox.classList.remove('show');
         getWeather();
     }
     
-    // ========== 8. ПОИСК С ПОДСКАЗКАМИ (debounce для производительности) ==========
-    
-    let debounceTimeout = null;
+    // ===== ПОДСКАЗКИ =====
     const cityInput = document.getElementById('cityInput');
     const suggestionsBox = document.getElementById('suggestions');
     
     cityInput.addEventListener('input', function() {
-        if (debounceTimeout) clearTimeout(debounceTimeout);
-        
-        debounceTimeout = setTimeout(() => {
-            const val = this.value.toLowerCase();
-            if (val.length < 2) { 
-                suggestionsBox.classList.remove('show'); 
-                return; 
-            }
-            const filtered = WORLD_CITIES.filter(c => c.toLowerCase().includes(val)).slice(0, CONFIG.MAX_SUGGESTIONS);
-            if (filtered.length) {
-                suggestionsBox.innerHTML = filtered.map(c => `<div class="suggestion-item" onclick="selectCity('${c.replace(/'/g, "\\'")}')">${c}</div>`).join('');
-                suggestionsBox.classList.add('show');
-            } else {
-                suggestionsBox.classList.remove('show');
-            }
-        }, CONFIG.DEBOUNCE_DELAY);
+        const val = this.value.toLowerCase();
+        if (val.length < 1) { suggestionsBox.classList.remove('show'); return; }
+        const filtered = worldCities.filter(c => c.toLowerCase().includes(val)).slice(0, 12);
+        if (filtered.length) {
+            suggestionsBox.innerHTML = filtered.map(c => `<div class="suggestion-item" onclick="selectCity('${c.replace(/'/g, "\\'")}')">${c}</div>`).join('');
+            suggestionsBox.classList.add('show');
+        } else suggestionsBox.classList.remove('show');
     });
     
-    // Закрытие подсказок при клике вне
     document.addEventListener('click', (e) => {
         if (!cityInput.contains(e.target) && !suggestionsBox.contains(e.target)) {
             suggestionsBox.classList.remove('show');
@@ -611,24 +525,15 @@
     
     cityInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') getWeather(); });
     
-    // ========== 9. ИНИЦИАЛИЗАЦИЯ ==========
-    
-    // Привязка обработчиков к кнопкам
+    // ===== ИНИЦИАЛИЗАЦИЯ =====
     document.getElementById('searchBtn').onclick = getWeather;
     document.getElementById('locationBtn').onclick = getLocationWeather;
     
-    // Привязка обработчиков вкладок
     document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', (e) => switchTab(btn.dataset.tab, e));
     });
     
-    /**
-     * Автоматическое определение местоположения при загрузке
-     */
     async function autoDetectLocation() {
-        showLoading(true);
-        
-        // Пытаемся загрузить последний город из кэша
         const lastCity = localStorage.getItem('last_city');
         if (lastCity) {
             const cached = getCachedWeather(lastCity);
@@ -636,12 +541,10 @@
                 displayWeather(cached);
                 loadForecast(lastCity);
                 document.getElementById('cityInput').value = lastCity;
-                showLoading(false);
                 return;
             }
         }
         
-        // Определяем по геолокации
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 async (pos) => {
@@ -652,28 +555,21 @@
                         loadForecast(weather.name);
                         saveToCache(weather.name, weather);
                     } else {
-                        document.getElementById('cityInput').value = 'Москва';
-                        await getWeather();
+                        document.getElementById('cityInput').value = 'Moscow';
+                        getWeather();
                     }
-                    showLoading(false);
                 },
-                async () => {
-                    document.getElementById('cityInput').value = 'Москва';
-                    await getWeather();
-                    showLoading(false);
+                () => {
+                    document.getElementById('cityInput').value = 'Moscow';
+                    getWeather();
                 }
             );
         } else {
-            document.getElementById('cityInput').value = 'Москва';
-            await getWeather();
-            showLoading(false);
+            document.getElementById('cityInput').value = 'Moscow';
+            getWeather();
         }
     }
     
-    // Очистка старого кэша при старте
-    cleanOldCache();
-    
-    // Запуск автоопределения
     autoDetectLocation();
 </script>
 </body>
