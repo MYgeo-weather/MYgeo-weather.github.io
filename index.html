@@ -112,32 +112,32 @@
 </div>
 
 <script>
-    // ===== ОПТИМИЗИРОВАННАЯ ВЕРСИЯ - РАБОТАЕТ БЕЗ VPN =====
+    // ===== ОПТИМИЗИРОВАННАЯ ВЕРСИЯ =====
     
-    // API КЛЮЧ (бесплатный, работает из РФ)
+    // API КЛЮЧ
     const API_KEY = "a6c1772a166b4bbdf7a2e07c753da7c5";
-    
-    // Альтернативные API на случай блокировки
-    const BACKUP_API = "https://api.openweathermap.org";
-    const MAIN_API = "https://api.openweathermap.org";
     
     // Кэш на 15 минут
     const CACHE_TIME = 15 * 60 * 1000;
     
-    // Секретные фразы
-    const secretTips = ["📍 Мещiряков еврей 📍", "❌ Навальнiй жiв ❌", "🌿 СПАЙССССС 🌿"];
+    // ===== СПЕЦИАЛЬНЫЕ СОВЕТЫ ДЛЯ ГОРОДОВ =====
+    const specialCityTips = {
+        "Kyiv": "⚠️ шахiды нападают ⚠️",
+        "Kiev": "⚠️ шахiды нападают ⚠️",
+        "Jerusalem": "📍 Мещiряков еврей 📍",
+        "Berlin": "❌ Навальнiй жiв ❌",
+        "Mexico City": "🌿 СПАЙССССС 🌿",
+        "Мехико": "🌿 СПАЙССССС 🌿"
+    };
     
-    function getRandomTip() {
-        if (Math.random() < 0.015) {
-            return secretTips[Math.floor(Math.random() * secretTips.length)];
+    // Функция получения совета по погоде и городу
+    function getWeatherTip(cityName, descLower, temp, clouds, pop) {
+        // Проверяем специальные советы для городов
+        if (specialCityTips[cityName]) {
+            return specialCityTips[cityName];
         }
-        return null;
-    }
-    
-    function getWeatherTip(descLower, temp, clouds, pop) {
-        const secret = getRandomTip();
-        if (secret) return secret;
         
+        // Обычные советы по погоде
         if (descLower.includes('дождь')) return '☔ Не забудьте зонт!';
         if (descLower.includes('снег')) return '❄️ Одевайтесь теплее!';
         if (descLower.includes('гроза')) return '⚡ Гроза! Оставайтесь дома!';
@@ -187,15 +187,29 @@
         "Ялта": "Yalta", "Великий Новгород": "Veliky Novgorod", "Псков": "Pskov", "Смоленск": "Smolensk", "Тверь": "Tver",
         "Лондон": "London", "Париж": "Paris", "Берлин": "Berlin", "Мадрид": "Madrid", "Рим": "Rome", "Вена": "Vienna", "Амстердам": "Amsterdam",
         "Брюссель": "Brussels", "Прага": "Prague", "Будапешт": "Budapest", "Варшава": "Warsaw", "Стокгольм": "Stockholm", "Осло": "Oslo",
-        "Хельсинки": "Helsinki", "Копенгаген": "Copenhagen", "Дублин": "Dublin", "Лиссабон": "Lisbon", "Афины": "Athens"
+        "Хельсинки": "Helsinki", "Копенгаген": "Copenhagen", "Дублин": "Dublin", "Лиссабон": "Lisbon", "Афины": "Athens", "Мюнхен": "Munich",
+        "Гамбург": "Hamburg", "Милан": "Milan", "Неаполь": "Naples", "Турин": "Turin", "Марсель": "Marseille", "Лион": "Lyon", "Бордо": "Bordeaux",
+        "Барселона": "Barcelona", "Валенсия": "Valencia", "Севилья": "Seville", "Краков": "Krakow", "Львов": "Lviv", "Одесса": "Odesa",
+        "Киев": "Kyiv", "Минск": "Minsk", "Рига": "Riga", "Таллин": "Tallinn", "Вильнюс": "Vilnius", "Кишинёв": "Chisinau", "Бухарест": "Bucharest",
+        "София": "Sofia", "Белград": "Belgrade", "Загреб": "Zagreb", "Нью-Йорк": "New York", "Лос-Анджелес": "Los Angeles", "Чикаго": "Chicago",
+        "Хьюстон": "Houston", "Финикс": "Phoenix", "Филадельфия": "Philadelphia", "Сан-Антонио": "San Antonio", "Сан-Диего": "San Diego",
+        "Даллас": "Dallas", "Остин": "Austin", "Сан-Франциско": "San Francisco", "Сиэтл": "Seattle", "Бостон": "Boston", "Детройт": "Detroit",
+        "Торонто": "Toronto", "Монреаль": "Montreal", "Ванкувер": "Vancouver", "Мехико": "Mexico City", "Сан-Паулу": "Sao Paulo", "Рио-де-Жанейро": "Rio de Janeiro",
+        "Бразилиа": "Brasilia", "Буэнос-Айрес": "Buenos Aires", "Сантьяго": "Santiago", "Лима": "Lima", "Богота": "Bogota", "Каракас": "Caracas",
+        "Токио": "Tokyo", "Осака": "Osaka", "Киото": "Kyoto", "Пекин": "Beijing", "Шанхай": "Shanghai", "Гуанчжоу": "Guangzhou", "Шэньчжэнь": "Shenzhen",
+        "Сеул": "Seoul", "Пусан": "Busan", "Хошимин": "Ho Chi Minh", "Ханой": "Hanoi", "Бангкок": "Bangkok", "Джакарта": "Jakarta",
+        "Сингапур": "Singapore", "Куала-Лумпур": "Kuala Lumpur", "Манила": "Manila", "Нью-Дели": "New Delhi", "Мумбаи": "Mumbai",
+        "Бангалор": "Bangalore", "Карачи": "Karachi", "Лахор": "Lahore", "Дакка": "Dhaka", "Тегеран": "Tehran", "Стамбул": "Istanbul",
+        "Анкара": "Ankara", "Измир": "Izmir", "Дубай": "Dubai", "Абу-Даби": "Abu Dhabi", "Доха": "Doha", "Эр-Рияд": "Riyadh",
+        "Тель-Авив": "Tel Aviv", "Иерусалим": "Jerusalem", "Ташкент": "Tashkent", "Самарканд": "Samarkand", "Алматы": "Almaty",
+        "Астана": "Astana", "Бишкек": "Bishkek", "Душанбе": "Dushanbe", "Ашхабад": "Ashgabat", "Улан-Батор": "Ulaanbaatar",
+        "Ереван": "Yerevan", "Тбилиси": "Tbilisi", "Баку": "Baku", "Каир": "Cairo", "Александрия": "Alexandria",
+        "Касабланка": "Casablanca", "Марракеш": "Marrakesh", "Йоханнесбург": "Johannesburg", "Кейптаун": "Cape Town",
+        "Сидней": "Sydney", "Мельбурн": "Melbourne", "Брисбен": "Brisbane", "Перт": "Perth", "Окленд": "Auckland", "Веллингтон": "Wellington"
     };
     
-    // Дополнительные английские названия для крупных городов
-    const cityEnglishNames = {
-        "Moscow": "Москва", "Saint Petersburg": "Санкт-Петербург", "London": "Лондон", "Paris": "Париж",
-        "Berlin": "Берлин", "Rome": "Рим", "Madrid": "Мадрид", "New York": "Нью-Йорк",
-        "Tokyo": "Токио", "Beijing": "Пекин", "Istanbul": "Стамбул", "Dubai": "Дубай"
-    };
+    // Обратное отображение для русских названий
+    const rusNames = Object.fromEntries(Object.entries(engNames).map(([k,v]) => [v, k]));
     
     // ===== КЭШИРОВАНИЕ =====
     function getCachedWeather(city) {
@@ -230,7 +244,7 @@
     // ===== API ЗАПРОСЫ =====
     async function getWeatherByCoords(lat, lon) {
         try {
-            const url = `${MAIN_API}/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=ru`;
+            const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=ru`;
             const resp = await fetch(url);
             return resp.ok ? await resp.json() : null;
         } catch { return null; }
@@ -238,14 +252,13 @@
     
     async function getForecast(city) {
         try {
-            const url = `${MAIN_API}/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric&lang=ru&cnt=40`;
+            const url = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${API_KEY}&units=metric&lang=ru&cnt=40`;
             const resp = await fetch(url);
             if (!resp.ok) return null;
             const data = await resp.json();
             
             if (!data.list) return null;
             
-            // Группируем по дням
             const dailyMap = new Map();
             
             for (const item of data.list) {
@@ -257,7 +270,6 @@
                         temps: [],
                         pops: [],
                         descriptions: [],
-                        icon: null,
                         date: date
                     });
                 }
@@ -266,10 +278,8 @@
                 day.temps.push(item.main.temp);
                 if (item.pop) day.pops.push(item.pop);
                 day.descriptions.push(item.weather[0].description);
-                if (!day.icon) day.icon = item.weather[0].icon;
             }
             
-            // Преобразуем в массив прогнозов
             const forecast = [];
             let count = 0;
             for (const [key, value] of dailyMap) {
@@ -277,7 +287,6 @@
                 const maxTemp = Math.max(...value.temps);
                 const minTemp = Math.min(...value.temps);
                 const avgPop = value.pops.length > 0 ? Math.round(value.pops.reduce((a,b)=>a+b,0)/value.pops.length * 100) : 0;
-                // Берем самое частое описание
                 const descCount = {};
                 value.descriptions.forEach(d => descCount[d] = (descCount[d] || 0) + 1);
                 const mainDesc = Object.keys(descCount).reduce((a,b) => descCount[a] > descCount[b] ? a : b);
@@ -323,7 +332,7 @@
             const controller = new AbortController();
             currentRequest = controller;
             
-            const url = `${MAIN_API}/data/2.5/weather?q=${encodeURIComponent(englishCity)}&appid=${API_KEY}&units=metric&lang=ru`;
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(englishCity)}&appid=${API_KEY}&units=metric&lang=ru`;
             const response = await fetch(url, { signal: controller.signal });
             const data = await response.json();
             
@@ -362,13 +371,13 @@
                     loadForecast(weather.name);
                     saveToCache(weather.name, weather);
                 } else {
-                    document.getElementById('cityInput').value = 'Москва';
+                    document.getElementById('cityInput').value = 'Moscow';
                     getWeather();
                 }
                 showLoading(false);
             },
             () => {
-                document.getElementById('cityInput').value = 'Москва';
+                document.getElementById('cityInput').value = 'Moscow';
                 getWeather();
                 showLoading(false);
             },
@@ -387,12 +396,10 @@
             return; 
         }
         
-        const weekdays = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
         const shortWeekdays = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
         
         container.innerHTML = forecast.map(day => {
             const weekday = shortWeekdays[day.date.getDay()];
-            const fullWeekday = weekdays[day.date.getDay()];
             const dayNum = day.date.getDate();
             const monthNum = day.date.getMonth() + 1;
             const dateStr = `${dayNum.toString().padStart(2, '0')}.${monthNum.toString().padStart(2, '0')}`;
@@ -407,7 +414,7 @@
             else if (desc.includes('ясно')) emoji = '☀️';
             
             return `
-                <div class="forecast-day" title="${fullWeekday}">
+                <div class="forecast-day">
                     <div class="forecast-day-name">${weekday}<br><span style="font-size:11px;color:#999;">${dateStr}</span></div>
                     <div class="forecast-temp">${maxTemp}°/${minTemp}°</div>
                     <div class="forecast-desc">${emoji} ${day.description}</div>
@@ -424,9 +431,9 @@
         const tempMin = convertTemp(data.main.temp_min);
         const tempMax = convertTemp(data.main.temp_max);
         
-        // Отображаем город на русском и английском
-        const cityRu = cityEnglishNames[data.name] || data.name;
-        document.getElementById('cityName').textContent = `${cityRu}`;
+        // Отображаем город на русском (если есть) и английском
+        const cityRu = rusNames[data.name] || data.name;
+        document.getElementById('cityName').textContent = cityRu;
         document.getElementById('cityNameEn').textContent = `${data.name}, ${data.sys.country}`;
         
         document.getElementById('temperature').textContent = `${temp}°C`;
@@ -468,7 +475,8 @@
         else if (desc.includes('гроза')) emoji = '⛈';
         document.getElementById('weatherIcon').textContent = emoji;
         
-        const tip = getWeatherTip(desc, tempC, clouds, pop);
+        // Получаем совет (с учетом специальных советов для городов)
+        const tip = getWeatherTip(data.name, desc, tempC, clouds, pop);
         document.getElementById('weatherTip').textContent = tip;
     }
     
